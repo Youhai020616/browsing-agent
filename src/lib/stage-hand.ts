@@ -1,8 +1,15 @@
-import { Stagehand } from '@browserbasehq/stagehand';
+let StagehandCtor: any;
+async function getStagehandCtor() {
+  if (!StagehandCtor) {
+    const mod: any = await import('@browserbasehq/stagehand');
+    StagehandCtor = mod?.Stagehand ?? mod?.default?.Stagehand ?? mod;
+  }
+  return StagehandCtor as any;
+}
 
 class StagehandSessionManager {
   private static instance: StagehandSessionManager;
-  private stagehand: Stagehand | null = null;
+  private stagehand: any | null = null;
   private initialized = false;
   private lastUsed = Date.now();
   private readonly sessionTimeout = 10 * 60 * 1000; // 10 minutes
@@ -25,13 +32,14 @@ class StagehandSessionManager {
   /**
    * Ensure Stagehand is initialized and return the instance
    */
-  public async ensureStagehand(): Promise<Stagehand> {
+  public async ensureStagehand(): Promise<any> {
     this.lastUsed = Date.now();
 
     try {
       // Initialize if not already initialized
       if (!this.stagehand || !this.initialized) {
         console.log('Creating new Stagehand instance');
+        const Stagehand = await getStagehandCtor();
         this.stagehand = new Stagehand({
           apiKey: process.env.BROWSERBASE_API_KEY!,
           projectId: process.env.BROWSERBASE_PROJECT_ID!,
@@ -64,6 +72,7 @@ class StagehandSessionManager {
             error.message.includes('context destroyed'))
         ) {
           console.log('Browser session expired, reinitializing Stagehand...');
+          const Stagehand = await getStagehandCtor();
           this.stagehand = new Stagehand({
             apiKey: process.env.BROWSERBASE_API_KEY!,
             projectId: process.env.BROWSERBASE_PROJECT_ID!,
